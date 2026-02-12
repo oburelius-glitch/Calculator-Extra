@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculator Extra</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            /* Varsayılan Renk Paleti (Mavi Tonları & Beyaz) */
+            --primary-bg: rgba(255, 255, 255, 0.15);
+            --display-bg: rgba(0, 0, 0, 0.2);
+            --text-color: #ffffff;
+            --btn-bg: rgba(255, 255, 255, 0.1);
+            --btn-hover: rgba(255, 255, 255, 0.3);
+            --operator-bg: rgba(0, 168, 255, 0.4);
+            --equal-bg: #00a8ff;
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+
+        /* Tema Değişkenleri */
+        body.theme-ocean { --equal-bg: #00a8ff; --operator-bg: rgba(0, 168, 255, 0.4); }
+        body.theme-midnight { --equal-bg: #192a56; --operator-bg: rgba(25, 42, 86, 0.6); --text-color: #dcdde1; }
+        body.theme-ice { --primary-bg: rgba(255, 255, 255, 0.65); --text-color: #2f3640; --display-bg: rgba(255, 255, 255, 0.8); --equal-bg: #0097e6; }
+        body.theme-neon { --equal-bg: #00d2d3; --operator-bg: rgba(0, 210, 211, 0.4); --text-color: #fff; --shadow: 0 0 20px rgba(0, 210, 211, 0.5); }
+
+        /* Arkaplan Seçenekleri */
+        body { 
+            height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            overflow: hidden; 
+            transition: background 0.5s ease;
+            background-size: cover;
+            background-position: center;
+        }
+        body.bg-1 { background: linear-gradient(45deg, #0984e3, #74b9ff); }
+        body.bg-2 { background: linear-gradient(135deg, #1e3799, #0c2461); }
+        body.bg-3 { background: radial-gradient(circle, #00d2d3, #2e86de); }
+        body.bg-4 { background: linear-gradient(-45deg, #2980b9, #6dd5fa, #ffffff); }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Saat Widgeti */
+        #clock-widget {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 15px;
+            color: var(--text-color);
+            font-size: 1.2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .calculator {
+            background: var(--primary-bg);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            width: 350px;
+            transition: all 0.3s ease;
+        }
+
+        .settings {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            gap: 5px;
+        }
+
+        select, .custom-bg-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 5px;
+            padding: 5px;
+            color: var(--text-color);
+            outline: none;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .display {
+            background: var(--display-bg);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: right;
+            margin-bottom: 20px;
+            height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .previous-operand { font-size: 0.9rem; opacity: 0.7; color: var(--text-color); min-height: 20px; }
+        .current-operand { font-size: 2rem; font-weight: bold; color: var(--text-color); word-wrap: break-word; }
+
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        button {
+            background: var(--btn-bg);
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Yaylanma efekti */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Tuş Animasyonu (Ripple Efekti) */
+        button:active {
+            transform: scale(0.92);
+            background: var(--btn-hover);
+        }
+
+        /* Klavye ile basıldığında simüle edilecek sınıf */
+        button.active-key {
+            transform: scale(0.92);
+            background: var(--btn-hover);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+        }
+
+        .span-2 { grid-column: span 2; }
+        .operator { background: var(--operator-bg); font-weight: bold; }
+        .equal { background: var(--equal-bg); color: #fff; font-weight: bold; }
+        .delete { background: rgba(231, 76, 60, 0.6); }
+
+        .history-panel {
+            background: var(--primary-bg);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            width: 250px;
+            height: 520px;
+            overflow-y: auto;
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .history-header {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+            padding-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .clear-history { background: transparent; color: var(--text-color); padding: 5px; box-shadow: none; }
+
+        .history-item {
+            background: rgba(0,0,0,0.1);
+            margin-bottom: 8px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.3); border-radius: 4px; }
+
+        @media (max-width: 768px) {
+            .container { flex-direction: column; align-items: center; }
+            .history-panel { width: 350px; height: 200px; }
+        }
+    </style>
+</head>
+<body class="bg-1 theme-ocean">
+
+    <div id="clock-widget">00:00:00</div>
+
+    <div class="container">
+        <div class="calculator">
+            <div class="settings">
+                <select id="bg-selector" title="Arkaplan Seç">
+                    <option value="bg-1">Mavi Geçiş</option>
+                    <option value="bg-2">Derin Deniz</option>
+                    <option value="bg-3">Okyanus</option>
+                    <option value="bg-4">Buzul Havası</option>
+                </select>
+                <button class="custom-bg-btn" onclick="document.getElementById('bg-input').click()" title="Resim Yükle">
+                    <i class="fas fa-image"></i>
+                </button>
+                <input type="file" id="bg-input" hidden accept="image/*">
+                
+                <select id="theme-selector" title="Tema Seç">
+                    <option value="theme-ocean">Okyanus Teması</option>
+                    <option value="theme-midnight">Gece Mavisi</option>
+                    <option value="theme-ice">Buz Beyazı</option>
+                    <option value="theme-neon">Neon Mavi</option>
+                </select>
+            </div>
+
+            <div class="display">
+                <div class="previous-operand" id="previous-operand"></div>
+                <div class="current-operand" id="current-operand">0</div>
+            </div>
+
+            <div class="buttons-grid">
+                <button class="span-2 delete" data-key="Escape" onclick="calculator.clear()">AC</button>
+                <button class="delete" data-key="Backspace" onclick="calculator.delete()">DEL</button>
+                <button class="operator" data-key="/" onclick="calculator.chooseOperation('÷')">÷</button>
+                
+                <button data-key="7" onclick="calculator.appendNumber('7')">7</button>
+                <button data-key="8" onclick="calculator.appendNumber('8')">8</button>
+                <button data-key="9" onclick="calculator.appendNumber('9')">9</button>
+                <button class="operator" data-key="*" onclick="calculator.chooseOperation('*')">×</button>
+                
+                <button data-key="4" onclick="calculator.appendNumber('4')">4</button>
+                <button data-key="5" onclick="calculator.appendNumber('5')">5</button>
+                <button data-key="6" onclick="calculator.appendNumber('6')">6</button>
+                <button class="operator" data-key="-" onclick="calculator.chooseOperation('-')">-</button>
+                
+                <button data-key="1" onclick="calculator.appendNumber('1')">1</button>
+                <button data-key="2" onclick="calculator.appendNumber('2')">2</button>
+                <button data-key="3" onclick="calculator.appendNumber('3')">3</button>
+                <button class="operator" data-key="+" onclick="calculator.chooseOperation('+')">+</button>
+                
+                <button data-key="." onclick="calculator.appendNumber('.')">.</button>
+                <button data-key="0" onclick="calculator.appendNumber('0')">0</button>
+                <button class="span-2 equal" data-key="Enter" onclick="calculator.compute()">=</button>
+            </div>
+        </div>
+
+        <div class="history-panel">
+            <div class="history-header">
+                <span>Geçmiş</span>
+                <button class="clear-history" onclick="calculator.clearHistory()"><i class="fas fa-trash"></i></button>
+            </div>
+            <div id="history-list"></div>
+        </div>
+    </div>
+
+    <script>
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock-widget').innerText = now.toLocaleTimeString('tr-TR');
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Arkaplan Değiştirme
+        const bgSelector = document.getElementById('bg-selector');
+        bgSelector.addEventListener('change', (e) => {
+            document.body.style.backgroundImage = ''; 
+            document.body.className = document.body.className.replace(/bg-\d/, e.target.value);
+        });
+
+        // Özel Arkaplan Yükleme
+        document.getElementById('bg-input').addEventListener('change', function(e) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                document.body.style.backgroundImage = `url('${event.target.result}')`;
+            }
+            reader.readAsDataURL(e.target.files[0]);
+        });
+
+        // Tema Seçici
+        document.getElementById('theme-selector').addEventListener('change', (e) => {
+            document.body.classList.remove('theme-ocean', 'theme-midnight', 'theme-ice', 'theme-neon');
+            document.body.classList.add(e.target.value);
+        });
+
+        class Calculator {
+            constructor(previousOperandTextElement, currentOperandTextElement, historyListElement) {
+                this.previousOperandTextElement = previousOperandTextElement;
+                this.currentOperandTextElement = currentOperandTextElement;
+                this.historyListElement = historyListElement;
+                this.clear();
+            }
+            clear() { this.currentOperand = '0'; this.previousOperand = ''; this.operation = undefined; this.updateDisplay(); }
+            delete() {
+                if (this.currentOperand === '0') return;
+                this.currentOperand = this.currentOperand.toString().slice(0, -1);
+                if (this.currentOperand === '') this.currentOperand = '0';
+                this.updateDisplay();
+            }
+            appendNumber(number) {
+                if (number === '.' && this.currentOperand.includes('.')) return;
+                if (this.currentOperand === '0' && number !== '.') this.currentOperand = number.toString();
+                else this.currentOperand = this.currentOperand.toString() + number.toString();
+                this.updateDisplay();
+            }
+            chooseOperation(operation) {
+                if (this.currentOperand === '') return;
+                if (this.previousOperand !== '') this.compute();
+                this.operation = operation;
+                this.previousOperand = this.currentOperand;
+                this.currentOperand = '';
+                this.updateDisplay();
+            }
+            compute() {
+                let computation;
+                const prev = parseFloat(this.previousOperand);
+                const current = parseFloat(this.currentOperand);
+                if (isNaN(prev) || isNaN(current)) return;
+                switch (this.operation) {
+                    case '+': computation = prev + current; break;
+                    case '-': computation = prev - current; break;
+                    case '*': computation = prev * current; break;
+                    case '÷': computation = prev / current; break;
+                    default: return;
+                }
+                this.addToHistory(prev, this.operation, current, computation);
+                this.currentOperand = computation;
+                this.operation = undefined;
+                this.previousOperand = '';
+                this.updateDisplay();
+            }
+            getDisplayNumber(number) {
+                const stringNumber = number.toString();
+                const integerDigits = parseFloat(stringNumber.split('.')[0]);
+                const decimalDigits = stringNumber.split('.')[1];
+                let integerDisplay = isNaN(integerDigits) ? '' : integerDigits.toLocaleString('tr-TR');
+                return decimalDigits != null ? `${integerDisplay},${decimalDigits}` : integerDisplay;
+            }
+            updateDisplay() {
+                this.currentOperandTextElement.innerText = this.getDisplayNumber(this.currentOperand);
+                this.previousOperandTextElement.innerText = this.operation != null ? 
+                    `${this.getDisplayNumber(this.previousOperand)} ${this.operation}` : '';
+            }
+            addToHistory(prev, op, current, result) {
+                const item = document.createElement('div');
+                item.classList.add('history-item');
+                item.innerHTML = `<div class="history-expression">${this.getDisplayNumber(prev)} ${op} ${this.getDisplayNumber(current)}</div><div class="history-result">= ${this.getDisplayNumber(result)}</div>`;
+                this.historyListElement.prepend(item);
+            }
+            clearHistory() { this.historyListElement.innerHTML = ''; }
+        }
+
+        const calculator = new Calculator(
+            document.getElementById('previous-operand'),
+            document.getElementById('current-operand'),
+            document.getElementById('history-list')
+        );
+
+        // Klavye Desteği ve Tuş Animasyonu Entegrasyonu
+        window.addEventListener('keydown', e => {
+            let key = e.key;
+            if (key === '/') e.preventDefault();
+            if (key === '*') key = '*';
+            
+            const btn = document.querySelector(`button[data-key="${key}"]`);
+            if (btn) {
+                btn.classList.add('active-key');
+                btn.click();
+                setTimeout(() => btn.classList.remove('active-key'), 150);
+            }
+        });
+    </script>
+</body>
+</html>
